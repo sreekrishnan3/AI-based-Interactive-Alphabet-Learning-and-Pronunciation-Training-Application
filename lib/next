@@ -1,0 +1,3048 @@
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:video_player/video_player.dart'; 
+
+/// 🔤 OBJECT NAMES (ADD HERE — TOP LEVEL)
+const Map<String, String> objectNames = {
+  'A': 'Apple',
+  'B': 'Ball',
+  'C': 'Car',
+  'D': 'Drum',
+  'E': 'Egg',
+  'F': 'Fan',
+  'G': 'Grapes',
+  'H': 'Hat',
+  'I': 'Igloo',
+  'J': 'Joker',
+  'K': 'Key',
+  'L': 'Leaf',
+  'M': 'Moon',
+  'N': 'Nest',
+  'O': 'Orange',
+  'P': 'Pencil',
+  'Q': 'Quill',
+  'R': 'Rocket',
+  'S': 'Sun',
+  'T': 'Tap',
+  'U': 'Umbrella',
+  'V': 'Violin',
+  'W': 'Watermelon',
+  'X': 'X-ray',
+  'Y': 'Yoyo',
+  'Z': 'Zip',
+};
+
+/// 🔓 LEVEL STATES
+bool level2Unlocked = false;
+bool level3Unlocked = false;
+bool level4Unlocked = false;
+bool level5Unlocked = false;
+
+void main() {
+  runApp(const SoundSortingApp());
+}
+
+class SoundSortingApp extends StatelessWidget {
+  const SoundSortingApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: HomePage(),
+    );
+  }
+}
+
+
+/// ================= HOME PAGE =================
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnim;
+
+  late AudioPlayer _player;
+  bool isPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    /// 🎬 Play button animation
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
+    _scaleAnim = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    );
+
+    /// 🔊 Audio setup
+    _player = AudioPlayer();
+    _player.setReleaseMode(ReleaseMode.loop);
+  }
+
+  Future<void> toggleMusic() async {
+    if (isPlaying) {
+      await _player.pause();
+    } else {
+      await _player.play(
+        AssetSource('music/home.mp3'),
+        volume: 1.0,
+      );
+    }
+    setState(() => isPlaying = !isPlaying);
+  }
+
+  Future<void> _onPlayTap() async {
+    await _controller.forward();
+    await _controller.reverse();
+
+    /// 🔇 stop music when leaving home
+    await _player.stop();
+
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const LevelPage(), // your existing page
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          /// 🌄 Background Image
+          Image.asset(
+            'assets/page/start.png',
+            fit: BoxFit.cover,
+          ),
+
+          /// 🔊 Audio Button (Top-Right)
+          Positioned(
+            top: 40,
+            right: 20,
+            child: IconButton(
+              iconSize: 38,
+              icon: Icon(
+                isPlaying ? Icons.volume_up : Icons.volume_off,
+                color: Colors.white,
+              ),
+              onPressed: toggleMusic,
+            ),
+          ),
+
+          /// ▶ Play Button Center
+          Center(
+            child: GestureDetector(
+              onTap: _onPlayTap,
+              child: ScaleTransition(
+                scale: _scaleAnim,
+                child: Image.asset(
+                  'assets/page/play.png',
+                  width: 260,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// ================= LEVEL PAGE =================
+class LevelPage extends StatefulWidget {
+  const LevelPage({super.key});
+
+  @override
+  State<LevelPage> createState() => _LevelPageState();
+}
+
+class _LevelPageState extends State<LevelPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _floatAnim;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 2))
+          ..repeat(reverse: true);
+
+    _floatAnim = Tween<double>(begin: -4.0, end: 4.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Levels'),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.home),
+            onPressed: () =>
+                Navigator.popUntil(context, (route) => route.isFirst),
+          ),
+        ],
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          /// 🌄 BACKGROUND
+          Image.asset(
+            'assets/page/level.png',
+            fit: BoxFit.cover,
+          ),
+
+          Padding(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + kToolbarHeight,
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  /// ================= ROW 1 =================
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _levelTile(context, 1, true, 'A', 'E'),
+                      _levelTile(context, 2, level2Unlocked, 'F', 'J'),
+                      _levelTile(context, 3, level3Unlocked, 'K', 'O'),
+                    ],
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  /// ================= ROW 2 =================
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      const SizedBox(width: 90),
+                      _levelTile(context, 4, level4Unlocked, 'P', 'T'),
+                      _levelTile(context, 5, level5Unlocked, 'U', 'Z'),
+                      const SizedBox(width: 90),
+                    ],
+                  ),
+
+                  const SizedBox(height: 50),
+
+                  /// ================= ROW 3 (FINAL GAME) =================
+                  AnimatedBuilder(
+                    animation: _floatAnim,
+                    builder: (_, child) {
+                      return Transform.translate(
+                        offset: Offset(0, _floatAnim.value),
+                        child: child,
+                      );
+                    },
+                    child: GestureDetector(
+                      onTap: level5Unlocked
+                          ? () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const FinalGamePage(),
+                                ),
+                              );
+                            }
+                          : null,
+                      child: Opacity(
+                        opacity: level5Unlocked ? 1 : 0.4,
+                        child: Image.asset(
+                          'assets/level/lfg.png', // your final game image
+                          height: 120,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ================= LEVEL TILE =================
+  Widget _levelTile(
+    BuildContext context,
+    int level,
+    bool unlocked,
+    String start,
+    String end,
+  ) {
+    return GestureDetector(
+      onTap: unlocked
+          ? () async {
+              await Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (_) => AlphabetPage(
+      startLetter: start,
+      endLetter: end,
+    ),
+  ),
+);
+
+/// 🔓 UNLOCK LOGIC
+setState(() {
+  if (level == 1) {
+    level2Unlocked = true;
+  } else if (level == 2) {
+    level3Unlocked = true;
+  } else if (level == 3) {
+    level4Unlocked = true;
+  } else if (level == 4) {
+    level5Unlocked = true;
+  }
+  // ⚠️ DO NOT unlock final game here
+});
+
+            }
+          : null,
+      child: AnimatedBuilder(
+        animation: _floatAnim,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, unlocked ? _floatAnim.value : 0),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Image.asset(
+                  'assets/level/l$level.png',
+                  height: 110,
+                  fit: BoxFit.contain,
+                ),
+                if (!unlocked)
+                  Container(
+                    height: 110,
+                    width: 110,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.35),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(
+                      Icons.lock,
+                      color: Color.fromARGB(255, 87, 66, 3),
+                      size: 36,
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// ================= FINAL GAME PAGE =================
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Final Game"),
+      ),
+      body: const Center(
+        child: Text(
+          "🎉 Final Game Unlocked!",
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+
+  
+/// ================= ALPHABET PAGE ================= ///
+
+class AlphabetPage extends StatefulWidget {
+  final String startLetter, endLetter;
+
+  const AlphabetPage({
+    super.key,
+    required this.startLetter,
+    required this.endLetter,
+  });
+
+  @override
+  State<AlphabetPage> createState() => _AlphabetPageState();
+}
+
+class _AlphabetPageState extends State<AlphabetPage>
+    with TickerProviderStateMixin {
+
+  late String currentLetter;
+  bool showObject = false;
+  int tapCount = 0;
+
+  late AnimationController _floatCtrl;
+  late Animation<double> _floatAnim;
+
+  late AnimationController _bounceCtrl;
+  late Animation<double> _bounceAnim;
+
+  /// 🔊 TTS (FIXED)
+  late FlutterTts tts;
+
+  @override
+  void initState() {
+    super.initState();
+    currentLetter = widget.startLetter;
+
+    /// 🔊 INIT TTS
+    tts = FlutterTts();
+    tts.setLanguage("en-US");
+    tts.setSpeechRate(0.4);
+    tts.setPitch(1.1);
+
+    _floatCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    _floatAnim = Tween(begin: -10.0, end: 10.0).animate(
+      CurvedAnimation(parent: _floatCtrl, curve: Curves.easeInOut),
+    );
+
+    _bounceCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
+    _bounceAnim = Tween(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _bounceCtrl, curve: Curves.elasticOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    tts.stop();
+    _floatCtrl.dispose();
+    _bounceCtrl.dispose();
+    super.dispose();
+  }
+
+  /// 🔊 SPEAK: "A for Apple"
+  Future<void> _speak() async {
+    final object = objectNames[currentLetter] ?? '';
+    await tts.stop();
+    await tts.speak("$currentLetter for $object");
+  }
+
+  void _onAlphabetTap() {
+    setState(() {
+      showObject = true;
+      tapCount++;
+    });
+
+    _bounceCtrl.forward(from: 0);
+
+    _speak(); // 🔊 TTS trigger
+
+    if (tapCount >= 5) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _next(context);
+      });
+    }
+  }
+
+  void _next(BuildContext context) {
+    tapCount = 0;
+
+    if (currentLetter != widget.endLetter) {
+      setState(() {
+        currentLetter =
+            String.fromCharCode(currentLetter.codeUnitAt(0) + 1);
+        showObject = false;
+      });
+    } else {
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MatchAssessmentPage(
+            start: widget.startLetter,
+            end: widget.endLetter,
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final h = MediaQuery.of(context).size.height;
+    final topPadding =
+        MediaQuery.of(context).padding.top + kToolbarHeight;
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: Text('Alphabet $currentLetter'),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/page/learning.png',
+            fit: BoxFit.cover,
+          ),
+
+          Padding(
+            padding: EdgeInsets.only(top: topPadding),
+            child: Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  /// 🔤 ALPHABET
+                  GestureDetector(
+                    onTap: _onAlphabetTap,
+                    child: AnimatedBuilder(
+                      animation: _floatAnim,
+                      builder: (_, child) {
+                        return Transform.translate(
+                          offset: Offset(0, _floatAnim.value),
+                          child: ScaleTransition(
+                            scale: _bounceAnim,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Image.asset(
+                        'assets/alphabets/$currentLetter.png',
+                        height: h * 0.34,
+                      ),
+                    ),
+                  ),
+
+                  /// 🧸 OBJECT
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 300),
+                    opacity: showObject ? 1 : 0,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ScaleTransition(
+                          scale: _bounceAnim,
+                          child: Image.asset(
+                            'assets/images/img$currentLetter.png',
+                            height: h * 0.36,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          objectNames[currentLetter] ?? '',
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+
+      floatingActionButton: ElevatedButton(
+        onPressed: () => _next(context),
+        child: const Text('NEXT ▶'),
+      ),
+      floatingActionButtonLocation:
+          FloatingActionButtonLocation.centerFloat,
+    );
+  }
+}
+
+
+/// ================= MATCH ASSESSMENT ================= ///
+
+class MatchAssessmentPage extends StatefulWidget {
+  final String start;
+  final String end;
+
+  const MatchAssessmentPage({
+    super.key,
+    required this.start,
+    required this.end,
+  });
+
+  @override
+  State<MatchAssessmentPage> createState() => _MatchAssessmentPageState();
+}
+
+class _MatchAssessmentPageState extends State<MatchAssessmentPage> {
+  late final List<String> letters;
+  late final List<String> targets;
+
+  final Map<String, bool> matched = {};
+  final Set<String> usedLetters = {}; // ✅ letter usable only once
+  final Set<String> wrongTargets = {}; // ✅ keep red glow till end
+
+  int correctCount = 0;
+  int wrongCount = 0;
+
+  final AudioPlayer _soundPlayer = AudioPlayer();
+
+  @override
+  void initState() {
+    super.initState();
+
+    letters = List.generate(
+      widget.end.codeUnitAt(0) - widget.start.codeUnitAt(0) + 1,
+      (i) => String.fromCharCode(widget.start.codeUnitAt(0) + i),
+    );
+
+    targets = List.from(letters)..shuffle();
+  }
+
+  @override
+  void dispose() {
+    _soundPlayer.dispose();
+    super.dispose();
+  }
+
+  Future<void> _playCorrectSound() async {
+    await _soundPlayer.stop();
+    await _soundPlayer.play(AssetSource('music/correct.mp3'));
+  }
+
+  Future<void> _playWrongSound() async {
+    await _soundPlayer.stop();
+    await _soundPlayer.play(AssetSource('music/wrong.mp3'));
+  }
+
+  void _handleMatch(String dragged, String target) {
+    // 🚫 If letter already used, ignore
+    if (usedLetters.contains(dragged)) return;
+
+    setState(() {
+      usedLetters.add(dragged); // mark letter used
+    });
+
+    if (dragged == target && matched[target] != true) {
+      _playCorrectSound();
+
+      setState(() {
+        matched[target] = true;
+        correctCount++;
+      });
+    } else {
+      _playWrongSound();
+
+      setState(() {
+        wrongTargets.add(target); // 🔴 permanent red glow
+        wrongCount++;
+      });
+    }
+
+    // When all letters used → show score
+    if (usedLetters.length == letters.length) {
+      Future.delayed(const Duration(milliseconds: 700), _showScorePage);
+    }
+  }
+
+  void _showScorePage() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ScorePage(
+          correct: correctCount,
+          wrong: wrongCount,
+          start: widget.start,
+          end: widget.end,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final h = MediaQuery.of(context).size.height;
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Match the Following'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/page/match.jpg', fit: BoxFit.cover),
+
+          Row(
+            children: [
+
+              /// LEFT SIDE LETTERS
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: letters.map((l) {
+                    final used = usedLetters.contains(l);
+
+                    return Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: used
+                          ? Opacity(
+                              opacity: 0.3,
+                              child: _alphabet(l, h * 0.12),
+                            )
+                          : Draggable<String>(
+                              data: l,
+                              feedback: _alphabet(l, h * 0.14),
+                              childWhenDragging: Opacity(
+                                opacity: 0.2,
+                                child: _alphabet(l, h * 0.12),
+                              ),
+                              child: _alphabet(l, h * 0.12),
+                            ),
+                    );
+                  }).toList(),
+                ),
+              ),
+
+              /// RIGHT SIDE TARGETS
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: targets.map((l) {
+                    final isMatched = matched[l] == true;
+                    final isWrong = wrongTargets.contains(l);
+
+                    return DragTarget<String>(
+                      onAccept: (d) => _handleMatch(d, l),
+                      builder: (_, __, ___) {
+                        return Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            height: h * 0.12,
+                            width: h * 0.12,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                width: 3,
+                                color: isMatched
+                                    ? Colors.green
+                                    : isWrong
+                                        ? Colors.red
+                                        : Colors.transparent,
+                              ),
+                              boxShadow: isWrong
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.red.withOpacity(0.8),
+                                        blurRadius: 25,
+                                        spreadRadius: 6,
+                                      )
+                                    ]
+                                  : isMatched
+                                      ? [
+                                          BoxShadow(
+                                            color:
+                                                Colors.green.withOpacity(0.7),
+                                            blurRadius: 20,
+                                            spreadRadius: 5,
+                                          )
+                                        ]
+                                      : [],
+                            ),
+                            child: Image.asset(
+                              'assets/images/img$l.png',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _alphabet(String l, double size) {
+    return SizedBox(
+      height: size,
+      width: size,
+      child: Image.asset('assets/alphabets/$l.png'),
+    );
+  }
+}
+
+/// ================ SCORE PAGE ================ ///
+ 
+class ScorePage extends StatelessWidget {
+  final int correct;
+  final int wrong;
+  final String start;
+  final String end;
+
+  const ScorePage({
+    super.key,
+    required this.correct,
+    required this.wrong,
+    required this.start,
+    required this.end,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool passed = correct > 3 && wrong < 2;
+
+    return Scaffold(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/page/score.jpg', fit: BoxFit.cover),
+
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                "Correct: $correct",
+                style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromARGB(255, 255, 255, 255)),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                "Wrong: $wrong",
+                style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromARGB(255, 255, 255, 255)),
+              ),
+              const SizedBox(height: 60),
+
+              GestureDetector(
+                onTap: () {
+                  if (passed) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ObjectBasketAssessmentPage(
+                          start: start,
+                          end: end,
+                        ),
+                      ),
+                    );
+                  } else {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MatchAssessmentPage(
+                          start: start,
+                          end: end,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: Image.asset(
+                  passed
+                      ? 'assets/page/continue.png'
+                      : 'assets/page/retry.png',
+                  width: 320,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// ================= OBJECT BASKET ASSESTMENT ================= ///
+
+
+class ObjectBasketAssessmentPage extends StatefulWidget {
+  final String start, end;
+
+  const ObjectBasketAssessmentPage({
+    super.key,
+    required this.start,
+    required this.end,
+  });
+
+  @override
+  State<ObjectBasketAssessmentPage> createState() =>
+      _ObjectBasketAssessmentPageState();
+}
+
+class _ObjectBasketAssessmentPageState
+    extends State<ObjectBasketAssessmentPage>
+    with SingleTickerProviderStateMixin {
+  late final List<String> letters;
+  late final List<String> objects;
+
+  int index = 0;
+  bool finished = false;
+
+  String? glowingBasket;
+  String? shakingBasket;
+
+  late AnimationController _shakeCtrl;
+  late Animation<double> _shakeAnim;
+
+  /// 🔊 SOUND PLAYER
+  final AudioPlayer _soundPlayer = AudioPlayer();
+
+  @override
+  void initState() {
+    super.initState();
+
+    letters = List.generate(
+      widget.end.codeUnitAt(0) - widget.start.codeUnitAt(0) + 1,
+      (i) => String.fromCharCode(widget.start.codeUnitAt(0) + i),
+    );
+
+    objects = List.from(letters)..shuffle();
+
+    _shakeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+
+    _shakeAnim = Tween<double>(begin: -6, end: 6).animate(
+      CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticIn),
+    );
+  }
+
+  @override
+  void dispose() {
+    _shakeCtrl.dispose();
+    _soundPlayer.dispose();
+    super.dispose();
+  }
+
+  /// 🔊 SOUND FUNCTIONS
+  Future<void> _playCorrectSound() async {
+    await _soundPlayer.stop();
+    await _soundPlayer.play(
+      AssetSource('music/correct.mp3'),
+    );
+  }
+
+  Future<void> _playWrongSound() async {
+    await _soundPlayer.stop();
+    await _soundPlayer.play(
+      AssetSource('music/wrong.mp3'),
+    );
+  }
+
+  /// ✅ FINISH SAFELY
+  void _finish() {
+    if (finished || !mounted) return;
+    finished = true;
+
+    if (widget.start == 'A') level2Unlocked = true;
+    if (widget.start == 'F') level3Unlocked = true;
+    if (widget.start == 'K') level4Unlocked = true;
+    if (widget.start == 'P') level5Unlocked = true;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LevelPage()),
+      (_) => false,
+    );
+  }
+
+  /// 🎯 DROP HANDLER (sound added only)
+  void _onDrop(String dragged, String target) {
+    if (dragged == target) {
+      _playCorrectSound(); // ✅ correct sound
+
+      setState(() => glowingBasket = target);
+
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (!mounted) return;
+
+        setState(() {
+          glowingBasket = null;
+          index++;
+        });
+
+        if (index >= objects.length) _finish();
+      });
+    } else {
+      _playWrongSound(); // ❌ wrong sound
+
+      setState(() => shakingBasket = target);
+      _shakeCtrl.forward(from: 0);
+
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (!mounted) return;
+        setState(() => shakingBasket = null);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (index >= objects.length) {
+      return const SizedBox();
+    }
+
+    final size = MediaQuery.of(context).size;
+    final topPadding =
+        MediaQuery.of(context).padding.top + kToolbarHeight;
+    final current = objects[index];
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Basket Assessment'),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/page/basket.png',
+            fit: BoxFit.cover,
+          ),
+          Padding(
+            padding: EdgeInsets.only(top: topPadding),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Draggable<String>(
+                  data: current,
+                  feedback: Image.asset(
+                    'assets/images/img$current.png',
+                    height: size.height * 0.25,
+                  ),
+                  childWhenDragging:
+                      SizedBox(height: size.height * 0.25),
+                  child: Image.asset(
+                    'assets/images/img$current.png',
+                    height: size.height * 0.25,
+                  ),
+                ),
+                const SizedBox(height: 40),
+                Wrap(
+                  spacing: 25,
+                  runSpacing: 25,
+                  alignment: WrapAlignment.center,
+                  children: letters.map((l) {
+                    final glow = glowingBasket == l;
+                    final shake = shakingBasket == l;
+
+                    return DragTarget<String>(
+                      onAccept: (d) => _onDrop(d, l),
+                      builder: (_, __, ___) {
+                        return AnimatedBuilder(
+                          animation: _shakeAnim,
+                          builder: (_, child) {
+                            return Transform.translate(
+                              offset:
+                                  Offset(shake ? _shakeAnim.value : 0, 0),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  boxShadow: glow
+                                      ? const [
+                                          BoxShadow(
+                                            color: Color.fromARGB(255, 255, 238, 7),
+                                            blurRadius: 20,
+                                            spreadRadius: 6,
+                                          )
+                                        ]
+                                      : [],
+                                ),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: Image.asset(
+                            'assets/basket/b$l.png',
+                            height: size.height * 0.35,
+                          ),
+                        );
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+/// ================= FINAL TRAIN GAME ================= ///
+
+class FinalGamePage extends StatefulWidget {
+  const FinalGamePage({super.key});
+
+  @override
+  State<FinalGamePage> createState() => _FinalGamePageState();
+}
+
+class _FinalGamePageState extends State<FinalGamePage>
+    with TickerProviderStateMixin {
+  late VideoPlayerController _videoController;
+  late AnimationController _scrollController;
+  late AnimationController _floatController;
+  late AnimationController _shakeController;
+  late AnimationController _dropController;
+
+  late Animation<double> _floatAnim;
+  late Animation<double> _shakeAnim;
+  late Animation<double> _dropAnim;
+
+  final List<String> allLetters =
+      List.generate(26, (i) => String.fromCharCode(65 + i));
+
+  late List<String> objectQueue;
+  List<String> movingLetters = [];
+
+  int currentIndex = 0;
+  String? droppingLetter;
+
+  @override
+  void initState() {
+    super.initState();
+
+    /// 🎥 Background Video
+    _videoController =
+        VideoPlayerController.asset('assets/video/train.mp4')
+          ..initialize().then((_) {
+            if (mounted) {
+              setState(() {});
+              _videoController
+                ..setLooping(true)
+                ..play();
+            }
+          });
+
+    objectQueue = List.from(allLetters)..shuffle();
+    _generateMovingLetters();
+
+    /// Slow continuous movement (RIGHT ➜ LEFT)
+    _scrollController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 20))
+          ..repeat();
+
+    /// Floating animation
+    _floatController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 2))
+          ..repeat(reverse: true);
+
+    _floatAnim = Tween(begin: -10.0, end: 10.0).animate(
+        CurvedAnimation(parent: _floatController, curve: Curves.easeInOut));
+
+    /// Shake object
+    _shakeController =
+        AnimationController(vsync: this, duration: const Duration(milliseconds: 500))
+          ..repeat(reverse: true);
+
+    _shakeAnim = Tween(begin: -4.0, end: 4.0).animate(
+        CurvedAnimation(parent: _shakeController, curve: Curves.easeInOut));
+
+    /// Drop animation
+    _dropController =
+        AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+
+    _dropAnim = Tween(begin: 0.0, end: 320.0).animate(
+        CurvedAnimation(parent: _dropController, curve: Curves.easeIn));
+  }
+
+  void _generateMovingLetters() {
+    String correct = objectQueue[currentIndex];
+
+    // Repeat correct letter 2–3 times
+    int repeatCount = 2 + (DateTime.now().millisecond % 2);
+
+    movingLetters.clear();
+
+    for (int i = 0; i < repeatCount; i++) {
+      movingLetters.add(correct);
+    }
+
+    // Add random other letters to make total 4
+    final others = List<String>.from(allLetters)..shuffle();
+
+    for (String l in others) {
+      if (l != correct && movingLetters.length < 4) {
+        movingLetters.add(l);
+      }
+    }
+
+    movingLetters.shuffle();
+  }
+
+  void _onLetterTap(String letter) {
+    if (letter == objectQueue[currentIndex]) {
+      setState(() {
+        droppingLetter = letter;
+      });
+
+      _dropController.forward(from: 0);
+
+      Future.delayed(const Duration(milliseconds: 900), () {
+        if (!mounted) return;
+
+        setState(() {
+          droppingLetter = null;
+          currentIndex++;
+          if (currentIndex >= objectQueue.length) {
+            currentIndex = 0;
+            objectQueue.shuffle();
+          }
+          _generateMovingLetters();
+        });
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoController.dispose();
+    _scrollController.dispose();
+    _floatController.dispose();
+    _shakeController.dispose();
+    _dropController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_videoController.value.isInitialized) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final size = MediaQuery.of(context).size;
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          /// 🎥 Background
+          SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _videoController.value.size.width,
+                height: _videoController.value.size.height,
+                child: VideoPlayer(_videoController),
+              ),
+            ),
+          ),
+
+          /// 🔤 Moving Alphabets (RIGHT ➜ LEFT)
+          Positioned(
+            top: 90,
+            child: AnimatedBuilder(
+              animation: _scrollController,
+              builder: (_, __) {
+                return Transform.translate(
+                  offset: Offset(
+                      size.width - (_scrollController.value * (size.width + 400)),
+                      0),
+                  child: Row(
+                    children: movingLetters.map((l) {
+                      return AnimatedBuilder(
+                        animation: _floatAnim,
+                        builder: (_, child) {
+                          return Transform.translate(
+                            offset: Offset(0, _floatAnim.value),
+                            child: child,
+                          );
+                        },
+                        child: GestureDetector(
+                          onTap: () => _onLetterTap(l),
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 40),
+                            child: Image.asset(
+                              'assets/alphabets/$l.png',
+                              height: 90,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          /// 🧸 Object Image
+          Positioned(
+            bottom: 160,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: AnimatedBuilder(
+                animation: _shakeAnim,
+                builder: (_, child) {
+                  return Transform.translate(
+                    offset: Offset(_shakeAnim.value, 0),
+                    child: child,
+                  );
+                },
+                child: Image.asset(
+                  'assets/images/img${objectQueue[currentIndex]}.png',
+                  height: 120,
+                ),
+              ),
+            ),
+          ),
+
+          /// ⬇ Drop Animation
+          if (droppingLetter != null)
+            Positioned(
+              top: 90,
+              left: size.width / 2 - 45,
+              child: AnimatedBuilder(
+                animation: _dropAnim,
+                builder: (_, child) {
+                  return Transform.translate(
+                    offset: Offset(0, _dropAnim.value),
+                    child: child,
+                  );
+                },
+                child: Image.asset(
+                  'assets/alphabets/$droppingLetter.png',
+                  height: 90,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// ================= HELPERS ================= /// 
+
+PreferredSizeWidget _appBar(BuildContext c, String t) => AppBar(
+      title: Text(t),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => Navigator.pop(c),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.home),
+          onPressed: () => Navigator.popUntil(c, (r) => r.isFirst),
+        )
+      ],
+    );
+
+Widget _bgImage(String p) => Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(image: AssetImage(p), fit: BoxFit.cover),
+      ),
+    );
+
+Widget _overlay() => Container(color: Colors.black.withOpacity(0.3));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/// ================= AI PRONUNCIATION TRAINER ================= ///
+
+class AIPronunciationPage extends StatefulWidget {
+  const AIPronunciationPage({super.key});
+
+  @override
+  State<AIPronunciationPage> createState() => _AIPronunciationPageState();
+}
+
+class _AIPronunciationPageState extends State<AIPronunciationPage> {
+
+  late stt.SpeechToText speech;
+  bool listening = false;
+
+  String spokenText = "";
+  String currentLetter = "A";
+
+  @override
+  void initState() {
+    super.initState();
+    speech = stt.SpeechToText();
+  }
+
+  void startListening() async {
+
+    bool available = await speech.initialize();
+
+    if (available) {
+
+      setState(() {
+        listening = true;
+      });
+
+      speech.listen(
+        onResult: (result) {
+
+          setState(() {
+            spokenText = result.recognizedWords.toLowerCase();
+          });
+
+          String correctWord =
+              objectNames[currentLetter]!.toLowerCase();
+
+          if (spokenText.contains(correctWord)) {
+            _showResult(true);
+          } else {
+            _showResult(false);
+          }
+        },
+      );
+    }
+  }
+
+  void stopListening() {
+    speech.stop();
+    setState(() {
+      listening = false;
+    });
+  }
+
+  void _showResult(bool correct) {
+
+    stopListening();
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(correct ? "Great Job ⭐" : "Try Again"),
+        content: Text(
+          correct
+              ? "Correct pronunciation!"
+              : "Say ${objectNames[currentLetter]} clearly",
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Next"),
+            onPressed: () {
+              Navigator.pop(context);
+              _nextLetter();
+            },
+          )
+        ],
+      ),
+    );
+  }
+
+  void _nextLetter() {
+
+    setState(() {
+
+      int next = currentLetter.codeUnitAt(0) + 1;
+
+      if (next > 90) {
+        next = 65;
+      }
+
+      currentLetter = String.fromCharCode(next);
+
+      spokenText = "";
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
+    String object = objectNames[currentLetter]!;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("AI Pronunciation Trainer"),
+      ),
+
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+
+          Image.asset(
+            'assets/page/learning.png',
+            fit: BoxFit.cover,
+          ),
+
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+
+              Text(
+                "$currentLetter for $object",
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 40),
+
+              Image.asset(
+                'assets/images/img$currentLetter.png',
+                height: 200,
+              ),
+
+              const SizedBox(height: 40),
+
+              ElevatedButton.icon(
+                onPressed:
+                    listening ? stopListening : startListening,
+                icon: const Icon(Icons.mic),
+                label: Text(
+                  listening
+                      ? "Listening..."
+                      : "Speak $object",
+                ),
+              ),
+
+              const SizedBox(height: 30),
+
+              Text(
+                "You said: $spokenText",
+                style: const TextStyle(fontSize: 18),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}     
+
+
+
+
+
+
+
+
+
+
+
+
+
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:video_player/video_player.dart'; 
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+
+/// 🔤 OBJECT NAMES (ADD HERE — TOP LEVEL)
+const Map<String, String> objectNames = {
+  'A': 'Apple',
+  'B': 'Ball',
+  'C': 'Car',
+  'D': 'Drum',
+  'E': 'Egg',
+  'F': 'Fan',
+  'G': 'Grapes',
+  'H': 'Hat',
+  'I': 'Igloo',
+  'J': 'Joker',
+  'K': 'Key',
+  'L': 'Leaf',
+  'M': 'Moon',
+  'N': 'Nest',
+  'O': 'Orange',
+  'P': 'Pencil',
+  'Q': 'Quill',
+  'R': 'Rocket',
+  'S': 'Sun',
+  'T': 'Tap',
+  'U': 'Umbrella',
+  'V': 'Violin',
+  'W': 'Watermelon',
+  'X': 'X-ray',
+  'Y': 'Yoyo',
+  'Z': 'Zip',
+};
+
+/// 🔓 LEVEL STATES
+bool level2Unlocked = false;
+bool level3Unlocked = false;
+bool level4Unlocked = false;
+bool level5Unlocked = false;
+
+void main() {
+  runApp(const SoundSortingApp());
+}
+
+class SoundSortingApp extends StatelessWidget {
+  const SoundSortingApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: HomePage(),
+    );
+  }
+}
+
+
+/// ================= HOME PAGE =================
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnim;
+
+  late AudioPlayer _player;
+  bool isPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    /// 🎬 Play button animation
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
+    _scaleAnim = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    );
+
+    /// 🔊 Audio setup
+    _player = AudioPlayer();
+    _player.setReleaseMode(ReleaseMode.loop);
+  }
+
+  Future<void> toggleMusic() async {
+    if (isPlaying) {
+      await _player.pause();
+    } else {
+      await _player.play(
+        AssetSource('music/home.mp3'),
+        volume: 1.0,
+      );
+    }
+    setState(() => isPlaying = !isPlaying);
+  }
+
+  Future<void> _onPlayTap() async {
+    await _controller.forward();
+    await _controller.reverse();
+
+    /// 🔇 stop music when leaving home
+    await _player.stop();
+
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const LevelPage(), // your existing page
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          /// 🌄 Background Image
+          Image.asset(
+            'assets/page/start.png',
+            fit: BoxFit.cover,
+          ),
+
+          /// 🔊 Audio Button (Top-Right)
+          Positioned(
+            top: 40,
+            right: 20,
+            child: IconButton(
+              iconSize: 38,
+              icon: Icon(
+                isPlaying ? Icons.volume_up : Icons.volume_off,
+                color: Colors.white,
+              ),
+              onPressed: toggleMusic,
+            ),
+          ),
+
+          /// ▶ Play Button Center
+          Center(
+            child: GestureDetector(
+              onTap: _onPlayTap,
+              child: ScaleTransition(
+                scale: _scaleAnim,
+                child: Image.asset(
+                  'assets/page/play.png',
+                  width: 260,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// ================= LEVEL PAGE =================
+class LevelPage extends StatefulWidget {
+  const LevelPage({super.key});
+
+  @override
+  State<LevelPage> createState() => _LevelPageState();
+}
+
+class _LevelPageState extends State<LevelPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _floatAnim;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 2))
+          ..repeat(reverse: true);
+
+    _floatAnim = Tween<double>(begin: -4.0, end: 4.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Levels'),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.home),
+            onPressed: () =>
+                Navigator.popUntil(context, (route) => route.isFirst),
+          ),
+        ],
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          /// 🌄 BACKGROUND
+          Image.asset(
+            'assets/page/level.png',
+            fit: BoxFit.cover,
+          ),
+
+          Padding(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + kToolbarHeight,
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  /// ================= ROW 1 =================
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _levelTile(context, 1, true, 'A', 'E'),
+                      _levelTile(context, 2, level2Unlocked, 'F', 'J'),
+                      _levelTile(context, 3, level3Unlocked, 'K', 'O'),
+                    ],
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  /// ================= ROW 2 =================
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      const SizedBox(width: 90),
+                      _levelTile(context, 4, level4Unlocked, 'P', 'T'),
+                      _levelTile(context, 5, level5Unlocked, 'U', 'Z'),
+                      const SizedBox(width: 90),
+                    ],
+                  ),
+
+                  const SizedBox(height: 50),
+
+                  /// ================= ROW 3 (FINAL GAME) =================
+                  AnimatedBuilder(
+                    animation: _floatAnim,
+                    builder: (_, child) {
+                      return Transform.translate(
+                        offset: Offset(0, _floatAnim.value),
+                        child: child,
+                      );
+                    },
+                    child: GestureDetector(
+                      onTap: level5Unlocked
+                          ? () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const AIPronunciationPage(),
+                                ),
+                              );
+                            }
+                          : null,
+                      child: Opacity(
+                        opacity: level5Unlocked ? 1 : 0.4,
+                        child: Image.asset(
+                          'assets/level/lai.png', // your final game image
+                          height: 120,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ================= LEVEL TILE =================
+  Widget _levelTile(
+    BuildContext context,
+    int level,
+    bool unlocked,
+    String start,
+    String end,
+  ) {
+    return GestureDetector(
+      onTap: unlocked
+          ? () async {
+              await Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (_) => AlphabetPage(
+      startLetter: start,
+      endLetter: end,
+    ),
+  ),
+);
+
+/// 🔓 UNLOCK LOGIC
+setState(() {
+  if (level == 1) {
+    level2Unlocked = true;
+  } else if (level == 2) {
+    level3Unlocked = true;
+  } else if (level == 3) {
+    level4Unlocked = true;
+  } else if (level == 4) {
+    level5Unlocked = true;
+  }
+  // ⚠️ DO NOT unlock final game here
+});
+
+            }
+          : null,
+      child: AnimatedBuilder(
+        animation: _floatAnim,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, unlocked ? _floatAnim.value : 0),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Image.asset(
+                  'assets/level/l$level.png',
+                  height: 110,
+                  fit: BoxFit.contain,
+                ),
+                if (!unlocked)
+                  Container(
+                    height: 110,
+                    width: 110,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.35),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(
+                      Icons.lock,
+                      color: Color.fromARGB(255, 87, 66, 3),
+                      size: 36,
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// ================= FINAL GAME PAGE =================
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Final Game"),
+      ),
+      body: const Center(
+        child: Text(
+          "🎉 Final Game Unlocked!",
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+
+  
+/// ================= ALPHABET PAGE ================= ///
+
+class AlphabetPage extends StatefulWidget {
+  final String startLetter, endLetter;
+
+  const AlphabetPage({
+    super.key,
+    required this.startLetter,
+    required this.endLetter,
+  });
+
+  @override
+  State<AlphabetPage> createState() => _AlphabetPageState();
+}
+
+class _AlphabetPageState extends State<AlphabetPage>
+    with TickerProviderStateMixin {
+
+  late String currentLetter;
+  bool showObject = false;
+  int tapCount = 0;
+
+  late AnimationController _floatCtrl;
+  late Animation<double> _floatAnim;
+
+  late AnimationController _bounceCtrl;
+  late Animation<double> _bounceAnim;
+
+  /// 🔊 TTS (FIXED)
+  late FlutterTts tts;
+
+  @override
+  void initState() {
+    super.initState();
+    currentLetter = widget.startLetter;
+
+    /// 🔊 INIT TTS
+    tts = FlutterTts();
+    tts.setLanguage("en-US");
+    tts.setSpeechRate(0.4);
+    tts.setPitch(1.1);
+
+    _floatCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    _floatAnim = Tween(begin: -10.0, end: 10.0).animate(
+      CurvedAnimation(parent: _floatCtrl, curve: Curves.easeInOut),
+    );
+
+    _bounceCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
+    _bounceAnim = Tween(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _bounceCtrl, curve: Curves.elasticOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    tts.stop();
+    _floatCtrl.dispose();
+    _bounceCtrl.dispose();
+    super.dispose();
+  }
+
+  /// 🔊 SPEAK: "A for Apple"
+  Future<void> _speak() async {
+    final object = objectNames[currentLetter] ?? '';
+    await tts.stop();
+    await tts.speak("$currentLetter for $object");
+  }
+
+  void _onAlphabetTap() {
+    setState(() {
+      showObject = true;
+      tapCount++;
+    });
+
+    _bounceCtrl.forward(from: 0);
+
+    _speak(); // 🔊 TTS trigger
+
+    if (tapCount >= 5) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _next(context);
+      });
+    }
+  }
+
+  void _next(BuildContext context) {
+    tapCount = 0;
+
+    if (currentLetter != widget.endLetter) {
+      setState(() {
+        currentLetter =
+            String.fromCharCode(currentLetter.codeUnitAt(0) + 1);
+        showObject = false;
+      });
+    } else {
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MatchAssessmentPage(
+            start: widget.startLetter,
+            end: widget.endLetter,
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final h = MediaQuery.of(context).size.height;
+    final topPadding =
+        MediaQuery.of(context).padding.top + kToolbarHeight;
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: Text('Alphabet $currentLetter'),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/page/learning.png',
+            fit: BoxFit.cover,
+          ),
+
+          Padding(
+            padding: EdgeInsets.only(top: topPadding),
+            child: Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  /// 🔤 ALPHABET
+                  GestureDetector(
+                    onTap: _onAlphabetTap,
+                    child: AnimatedBuilder(
+                      animation: _floatAnim,
+                      builder: (_, child) {
+                        return Transform.translate(
+                          offset: Offset(0, _floatAnim.value),
+                          child: ScaleTransition(
+                            scale: _bounceAnim,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Image.asset(
+                        'assets/alphabets/$currentLetter.png',
+                        height: h * 0.34,
+                      ),
+                    ),
+                  ),
+
+                  /// 🧸 OBJECT
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 300),
+                    opacity: showObject ? 1 : 0,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ScaleTransition(
+                          scale: _bounceAnim,
+                          child: Image.asset(
+                            'assets/images/img$currentLetter.png',
+                            height: h * 0.36,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          objectNames[currentLetter] ?? '',
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+
+      floatingActionButton: ElevatedButton(
+        onPressed: () => _next(context),
+        child: const Text('NEXT ▶'),
+      ),
+      floatingActionButtonLocation:
+          FloatingActionButtonLocation.centerFloat,
+    );
+  }
+}
+
+
+/// ================= MATCH ASSESSMENT ================= ///
+
+class MatchAssessmentPage extends StatefulWidget {
+  final String start;
+  final String end;
+
+  const MatchAssessmentPage({
+    super.key,
+    required this.start,
+    required this.end,
+  });
+
+  @override
+  State<MatchAssessmentPage> createState() => _MatchAssessmentPageState();
+}
+
+class _MatchAssessmentPageState extends State<MatchAssessmentPage> {
+  late final List<String> letters;
+  late final List<String> targets;
+
+  final Map<String, bool> matched = {};
+  final Set<String> usedLetters = {}; // ✅ letter usable only once
+  final Set<String> wrongTargets = {}; // ✅ keep red glow till end
+
+  int correctCount = 0;
+  int wrongCount = 0;
+
+  final AudioPlayer _soundPlayer = AudioPlayer();
+
+  @override
+  void initState() {
+    super.initState();
+
+    letters = List.generate(
+      widget.end.codeUnitAt(0) - widget.start.codeUnitAt(0) + 1,
+      (i) => String.fromCharCode(widget.start.codeUnitAt(0) + i),
+    );
+
+    targets = List.from(letters)..shuffle();
+  }
+
+  @override
+  void dispose() {
+    _soundPlayer.dispose();
+    super.dispose();
+  }
+
+  Future<void> _playCorrectSound() async {
+    await _soundPlayer.stop();
+    await _soundPlayer.play(AssetSource('music/correct.mp3'));
+  }
+
+  Future<void> _playWrongSound() async {
+    await _soundPlayer.stop();
+    await _soundPlayer.play(AssetSource('music/wrong.mp3'));
+  }
+
+  void _handleMatch(String dragged, String target) {
+    // 🚫 If letter already used, ignore
+    if (usedLetters.contains(dragged)) return;
+
+    setState(() {
+      usedLetters.add(dragged); // mark letter used
+    });
+
+    if (dragged == target && matched[target] != true) {
+      _playCorrectSound();
+
+      setState(() {
+        matched[target] = true;
+        correctCount++;
+      });
+    } else {
+      _playWrongSound();
+
+      setState(() {
+        wrongTargets.add(target); // 🔴 permanent red glow
+        wrongCount++;
+      });
+    }
+
+    // When all letters used → show score
+    if (usedLetters.length == letters.length) {
+      Future.delayed(const Duration(milliseconds: 700), _showScorePage);
+    }
+  }
+
+  void _showScorePage() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ScorePage(
+          correct: correctCount,
+          wrong: wrongCount,
+          start: widget.start,
+          end: widget.end,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final h = MediaQuery.of(context).size.height;
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Match the Following'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/page/match.jpg', fit: BoxFit.cover),
+
+          Row(
+            children: [
+
+              /// LEFT SIDE LETTERS
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: letters.map((l) {
+                    final used = usedLetters.contains(l);
+
+                    return Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: used
+                          ? Opacity(
+                              opacity: 0.3,
+                              child: _alphabet(l, h * 0.12),
+                            )
+                          : Draggable<String>(
+                              data: l,
+                              feedback: _alphabet(l, h * 0.14),
+                              childWhenDragging: Opacity(
+                                opacity: 0.2,
+                                child: _alphabet(l, h * 0.12),
+                              ),
+                              child: _alphabet(l, h * 0.12),
+                            ),
+                    );
+                  }).toList(),
+                ),
+              ),
+
+              /// RIGHT SIDE TARGETS
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: targets.map((l) {
+                    final isMatched = matched[l] == true;
+                    final isWrong = wrongTargets.contains(l);
+
+                    return DragTarget<String>(
+                      onAcceptWithDetails: (d) => _handleMatch(d, l),
+                      builder: (_, __, ___) {
+                        return Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            height: h * 0.12,
+                            width: h * 0.12,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                width: 3,
+                                color: isMatched
+                                    ? Colors.green
+                                    : isWrong
+                                        ? Colors.red
+                                        : Colors.transparent,
+                              ),
+                              boxShadow: isWrong
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.red.withOpacity(0.8),
+                                        blurRadius: 25,
+                                        spreadRadius: 6,
+                                      )
+                                    ]
+                                  : isMatched
+                                      ? [
+                                          BoxShadow(
+                                            color:
+                                                Colors.green.withOpacity(0.7),
+                                            blurRadius: 20,
+                                            spreadRadius: 5,
+                                          )
+                                        ]
+                                      : [],
+                            ),
+                            child: Image.asset(
+                              'assets/images/img$l.png',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _alphabet(String l, double size) {
+    return SizedBox(
+      height: size,
+      width: size,
+      child: Image.asset('assets/alphabets/$l.png'),
+    );
+  }
+}
+
+/// ================ SCORE PAGE ================ ///
+ 
+class ScorePage extends StatelessWidget {
+  final int correct;
+  final int wrong;
+  final String start;
+  final String end;
+
+  const ScorePage({
+    super.key,
+    required this.correct,
+    required this.wrong,
+    required this.start,
+    required this.end,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool passed = correct > 3 && wrong < 2;
+
+    return Scaffold(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/page/score.jpg', fit: BoxFit.cover),
+
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                "Correct: $correct",
+                style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromARGB(255, 255, 255, 255)),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                "Wrong: $wrong",
+                style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromARGB(255, 255, 255, 255)),
+              ),
+              const SizedBox(height: 60),
+
+              GestureDetector(
+                onTap: () {
+                  if (passed) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ObjectBasketAssessmentPage(
+                          start: start,
+                          end: end,
+                        ),
+                      ),
+                    );
+                  } else {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MatchAssessmentPage(
+                          start: start,
+                          end: end,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: Image.asset(
+                  passed
+                      ? 'assets/page/continue.png'
+                      : 'assets/page/retry.png',
+                  width: 320,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// ================= OBJECT BASKET ASSESTMENT ================= ///
+
+/// ================= OBJECT BASKET ASSESSMENT ================= ///
+
+class ObjectBasketAssessmentPage extends StatefulWidget {
+  final String start, end;
+
+  const ObjectBasketAssessmentPage({
+    super.key,
+    required this.start,
+    required this.end,
+  });
+
+  @override
+  State<ObjectBasketAssessmentPage> createState() =>
+      _ObjectBasketAssessmentPageState();
+}
+
+class _ObjectBasketAssessmentPageState
+    extends State<ObjectBasketAssessmentPage>
+    with SingleTickerProviderStateMixin {
+
+  late final List<String> letters;
+  late final List<String> objects;
+
+  int index = 0;
+  bool finished = false;
+
+  String? glowingBasket;
+  String? shakingBasket;
+
+  late AnimationController _shakeCtrl;
+  late Animation<double> _shakeAnim;
+
+  /// 🔊 AUDIO PLAYER
+  final AudioPlayer _soundPlayer = AudioPlayer();
+
+  @override
+  void initState() {
+    super.initState();
+
+    /// Generate letters
+    letters = List.generate(
+      widget.end.codeUnitAt(0) - widget.start.codeUnitAt(0) + 1,
+      (i) => String.fromCharCode(widget.start.codeUnitAt(0) + i),
+    );
+
+    /// Shuffle objects
+    objects = List.from(letters)..shuffle();
+
+    /// Shake animation
+    _shakeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+
+    _shakeAnim = Tween<double>(begin: -6, end: 6).animate(
+      CurvedAnimation(
+        parent: _shakeCtrl,
+        curve: Curves.elasticIn,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _shakeCtrl.dispose();
+    _soundPlayer.dispose();
+    super.dispose();
+  }
+
+  /// ✅ Correct Sound
+  Future<void> _playCorrectSound() async {
+    await _soundPlayer.stop();
+    await _soundPlayer.play(
+      AssetSource('music/correct.mp3'),
+    );
+  }
+
+  /// ❌ Wrong Sound
+  Future<void> _playWrongSound() async {
+    await _soundPlayer.stop();
+    await _soundPlayer.play(
+      AssetSource('music/wrong.mp3'),
+    );
+  }
+
+  /// ✅ Finish Assessment
+  void _finish() {
+
+    if (finished || !mounted) return;
+
+    finished = true;
+
+    /// Unlock levels
+    if (widget.start == 'A') {
+      level2Unlocked = true;
+    } else if (widget.start == 'F') {
+      level3Unlocked = true;
+    } else if (widget.start == 'K') {
+      level4Unlocked = true;
+    } else if (widget.start == 'P') {
+      level5Unlocked = true;
+    }
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const LevelPage(),
+      ),
+      (_) => false,
+    );
+  }
+
+  /// 🎯 Drop Logic
+  void _onDrop(String dragged, String target) {
+
+    if (dragged == target) {
+
+      /// ✅ Correct Match
+      _playCorrectSound();
+
+      setState(() {
+        glowingBasket = target;
+      });
+
+      Future.delayed(const Duration(milliseconds: 500), () {
+
+        if (!mounted) return;
+
+        setState(() {
+          glowingBasket = null;
+          index++;
+        });
+
+        if (index >= objects.length) {
+          _finish();
+        }
+      });
+
+    } else {
+
+      /// ❌ Wrong Match
+      _playWrongSound();
+
+      setState(() {
+        shakingBasket = target;
+      });
+
+      _shakeCtrl.forward(from: 0);
+
+      Future.delayed(const Duration(milliseconds: 400), () {
+
+        if (!mounted) return;
+
+        setState(() {
+          shakingBasket = null;
+        });
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
+    if (index >= objects.length) {
+      return const SizedBox();
+    }
+
+    final size = MediaQuery.of(context).size;
+
+    final topPadding =
+        MediaQuery.of(context).padding.top + kToolbarHeight;
+
+    final current = objects[index];
+
+    return Scaffold(
+
+      extendBodyBehindAppBar: true,
+
+      appBar: AppBar(
+        title: const Text('Object Basket Assessment'),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+
+          /// 🌄 BACKGROUND
+          Image.asset(
+            'assets/page/basket.png',
+            fit: BoxFit.cover,
+          ),
+
+          Padding(
+            padding: EdgeInsets.only(top: topPadding),
+
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+
+                /// ================= DRAGGABLE OBJECT =================
+
+                Draggable<String>(
+
+                  data: current,
+
+                  feedback: Material(
+                    color: Colors.transparent,
+                    child: Image.asset(
+                      'assets/images/img$current.png',
+                      height: size.height * 0.25,
+                    ),
+                  ),
+
+                  childWhenDragging: SizedBox(
+                    height: size.height * 0.25,
+                  ),
+
+                  child: Image.asset(
+                    'assets/images/img$current.png',
+                    height: size.height * 0.25,
+                  ),
+                ),
+
+                const SizedBox(height: 40),
+
+                /// ================= BASKETS =================
+
+                Wrap(
+                  spacing: 25,
+                  runSpacing: 25,
+                  alignment: WrapAlignment.center,
+
+                  children: letters.map((l) {
+
+                    final glow = glowingBasket == l;
+                    final shake = shakingBasket == l;
+
+                    return DragTarget<String>(
+
+                      onAcceptWithDetails: (details) {
+                        _onDrop(details.data, l);
+                      },
+
+                      builder: (_, __, ___) {
+
+                        return AnimatedBuilder(
+
+                          animation: _shakeAnim,
+
+                          builder: (_, child) {
+
+                            return Transform.translate(
+
+                              offset: Offset(
+                                shake ? _shakeAnim.value : 0,
+                                0,
+                              ),
+
+                              child: Container(
+
+                                decoration: BoxDecoration(
+
+                                  boxShadow: glow
+                                      ? [
+                                          const BoxShadow(
+                                            color: Colors.yellow,
+                                            blurRadius: 20,
+                                            spreadRadius: 6,
+                                          )
+                                        ]
+                                      : [],
+                                ),
+
+                                child: child,
+                              ),
+                            );
+                          },
+
+                          child: Image.asset(
+                            'assets/basket/b$l.png',
+                            height: size.height * 0.30,
+                          ),
+                        );
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+/// ================= AI PRONUNCIATION TRAINER ================= ///
+
+class AIPronunciationPage extends StatefulWidget {
+  const AIPronunciationPage({super.key});
+
+  @override
+  State<AIPronunciationPage> createState() => _AIPronunciationPageState();
+}
+
+class _AIPronunciationPageState extends State<AIPronunciationPage> {
+
+  late stt.SpeechToText speech;
+  bool listening = false;
+
+  String spokenText = "";
+  String currentLetter = "A";
+
+  @override
+  void initState() {
+    super.initState();
+    speech = stt.SpeechToText();
+  }
+
+  void startListening() async {
+
+    bool available = await speech.initialize();
+
+    if (available) {
+
+      setState(() {
+        listening = true;
+      });
+
+      speech.listen(
+        onResult: (result) {
+
+          setState(() {
+            spokenText = result.recognizedWords.toLowerCase();
+          });
+
+          String correctWord =
+              objectNames[currentLetter]!.toLowerCase();
+
+          if (spokenText.contains(correctWord)) {
+            _showResult(true);
+          } else {
+            _showResult(false);
+          }
+        },
+      );
+    }
+  }
+
+  void stopListening() {
+    speech.stop();
+    setState(() {
+      listening = false;
+    });
+  }
+
+  void _showResult(bool correct) {
+
+    stopListening();
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(correct ? "Great Job ⭐" : "Try Again"),
+        content: Text(
+          correct
+              ? "Correct pronunciation!"
+              : "Say ${objectNames[currentLetter]} clearly",
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Next"),
+            onPressed: () {
+              Navigator.pop(context);
+              _nextLetter();
+            },
+          )
+        ],
+      ),
+    );
+  }
+
+  void _nextLetter() {
+
+    setState(() {
+
+      int next = currentLetter.codeUnitAt(0) + 1;
+
+      if (next > 90) {
+        next = 65;
+      }
+
+      currentLetter = String.fromCharCode(next);
+
+      spokenText = "";
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
+    String object = objectNames[currentLetter]!;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("AI Pronunciation Trainer"),
+      ),
+
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+
+          Image.asset(
+            'assets/page/learning.png',
+            fit: BoxFit.cover,
+          ),
+
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+
+              Text(
+                "$currentLetter for $object",
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 40),
+
+              Image.asset(
+                'assets/images/img$currentLetter.png',
+                height: 200,
+              ),
+
+              const SizedBox(height: 40),
+
+              ElevatedButton.icon(
+                onPressed:
+                    listening ? stopListening : startListening,
+                icon: const Icon(Icons.mic),
+                label: Text(
+                  listening
+                      ? "Listening..."
+                      : "Speak $object",
+                ),
+              ),
+
+              const SizedBox(height: 30),
+
+              Text(
+                "You said: $spokenText",
+                style: const TextStyle(fontSize: 18),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// ================= HELPERS ================= /// 
+
+PreferredSizeWidget _appBar(BuildContext c, String t) => AppBar(
+      title: Text(t),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => Navigator.pop(c),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.home),
+          onPressed: () => Navigator.popUntil(c, (r) => r.isFirst),
+        )
+      ],
+    );
+
+Widget _bgImage(String p) => Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(image: AssetImage(p), fit: BoxFit.cover),
+      ),
+    );
+
+Widget _overlay() => Container(color: Colors.black.withOpacity(0.3));
